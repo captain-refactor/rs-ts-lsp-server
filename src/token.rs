@@ -196,8 +196,8 @@ pub enum Token {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpannedToken {
     pub value: Token,
-    pub line: usize,
-    pub column: usize,
+    pub line: u32,
+    pub column: u32,
 }
 
 pub fn find_match(s: &str) -> Option<Token> {
