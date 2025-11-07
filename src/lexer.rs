@@ -11,7 +11,7 @@ pub struct Lexer {
 
 impl Lexer {
     /// Create a new lexer from a source string.
-    pub fn new<S: Into<String>>(source: S) -> Self { 
+    pub fn new<S: Into<String>>(source: S) -> Self {
         Self {
             source: source.into(),
         }
@@ -200,8 +200,8 @@ impl Lexer {
                 }
 
                 // Check if it's a keyword
-                let token = crate::token::find_match(&ident)
-                    .unwrap_or_else(|| Token::Identifier(ident));
+                let token =
+                    crate::token::find_match(&ident).unwrap_or_else(|| Token::Identifier(ident));
                 tokens.push(SpannedToken {
                     value: token,
                     line: start_line,
@@ -394,25 +394,20 @@ mod tests {
         );
     }
 
-    
     #[test]
     fn lexes_typescript_imports() {
-        let tokens = lex(
-            r#"
+        let tokens = lex(r#"
 import foo from "bar";
 import { baz, qux as quux } from "mod";
 import * as ns from "pkg";
 import "side-effect";
 console.log("hello world");
-"#
-        );
+"#);
 
         use Token::*;
 
         // Filter out comment trivia tokens
-        let tokens: Vec<_> = tokens
-            .into_iter()
-            .collect();
+        let tokens: Vec<_> = tokens.into_iter().collect();
 
         // Instead of comparing line/column numbers rigidly, just assert the token sequence and value
         let expected = vec![
@@ -421,7 +416,6 @@ console.log("hello world");
             From,
             StringLiteral("bar".into()),
             Semicolon,
-
             Import,
             OpenBrace,
             Identifier("baz".into()),
@@ -433,7 +427,6 @@ console.log("hello world");
             From,
             StringLiteral("mod".into()),
             Semicolon,
-
             Import,
             Asterisk,
             As,
@@ -441,11 +434,9 @@ console.log("hello world");
             From,
             StringLiteral("pkg".into()),
             Semicolon,
-
             Import,
             StringLiteral("side-effect".into()),
             Semicolon,
-
             Identifier("console".into()),
             Dot,
             Identifier("log".into()),
@@ -453,7 +444,6 @@ console.log("hello world");
             StringLiteral("hello world".into()),
             CloseParen,
             Semicolon,
-
             Eof,
         ];
 
@@ -464,8 +454,8 @@ console.log("hello world");
 
     #[test]
     fn test_typescript_with_trivias() {
-        use crate::token::Token::*;
         use crate::token::SpannedToken;
+        use crate::token::Token::*;
 
         let src = r#"
 // This is a single-line comment
@@ -506,7 +496,6 @@ console.log("hello /* not comment */ world"); // Trailing trivia
             StringLiteral("bar".into()),
             Semicolon,
             MultiLineCommentTrivia,
-
             Import,
             OpenBrace,
             MultiLineCommentTrivia,
@@ -520,7 +509,6 @@ console.log("hello /* not comment */ world"); // Trailing trivia
             From,
             StringLiteral("mod".into()),
             Semicolon,
-
             MultiLineCommentTrivia,
             Import,
             Asterisk,
@@ -530,21 +518,17 @@ console.log("hello /* not comment */ world"); // Trailing trivia
             StringLiteral("pkg".into()),
             Semicolon,
             SingleLineCommentTrivia,
-
             Import,
             StringLiteral("side-effect".into()),
             Semicolon,
             SingleLineCommentTrivia,
-
             SingleLineCommentTrivia,
-
             Let,
             Identifier("s".into()),
             Equals,
             StringLiteral("test // not a comment".into()),
             Semicolon,
             MultiLineCommentTrivia,
-
             Identifier("console".into()),
             Dot,
             Identifier("log".into()),
@@ -553,7 +537,6 @@ console.log("hello /* not comment */ world"); // Trailing trivia
             CloseParen,
             Semicolon,
             SingleLineCommentTrivia,
-
             Eof,
         ];
 
@@ -561,7 +544,4 @@ console.log("hello /* not comment */ world"); // Trailing trivia
 
         assert_eq!(actual_tokens, expected);
     }
-
-
 }
-
