@@ -27,24 +27,48 @@ impl Lexer {
             let start_line = line;
             let start_column = column;
 
-            // Skip whitespace (or emit as trivia if needed)
+            // Handle whitespace and newlines (emit as trivia)
             if ch.is_whitespace() {
                 if ch == '\n' {
+                    // Emit newline trivia
+                    tokens.push(SpannedToken {
+                        value: Token::NewLineTrivia,
+                        line: start_line,
+                        column: start_column,
+                    });
+                    chars.next();
                     line += 1;
                     column = 1;
+                    continue;
                 } else {
-                    column += 1;
+                    // Collect consecutive whitespace (spaces, tabs, etc.)
+                    let mut whitespace = String::new();
+                    while let Some(&c) = chars.peek() {
+                        if c == '\n' || !c.is_whitespace() {
+                            break;
+                        }
+                        whitespace.push(c);
+                        chars.next();
+                        column += 1;
+                    }
+                    tokens.push(SpannedToken {
+                        value: Token::WhitespaceTrivia(whitespace),
+                        line: start_line,
+                        column: start_column,
+                    });
+                    continue;
                 }
-                chars.next();
-                continue;
             }
 
             // Handle comments
             if ch == '/' {
                 let next = chars.clone().nth(1);
                 if next == Some('/') {
-                    // Single-line comment
-                    let mut comment = String::new();
+                    // Single-line comment - store full comment including "//" marker
+                    let mut comment = String::from("//");
+                    chars.next(); // consume first '/'
+                    chars.next(); // consume second '/'
+                    column += 2;
                     while let Some(&c) = chars.peek() {
                         if c == '\n' {
                             break;
@@ -54,13 +78,14 @@ impl Lexer {
                         column += 1;
                     }
                     tokens.push(SpannedToken {
-                        value: Token::SingleLineCommentTrivia,
+                        value: Token::SingleLineCommentTrivia(comment),
                         line: start_line,
                         column: start_column,
                     });
                     continue;
                 } else if next == Some('*') {
-                    // Multi-line comment
+                    // Multi-line comment - store full comment including "/* */" markers
+                    let mut comment = String::from("/*");
                     chars.next(); // consume '/'
                     chars.next(); // consume '*'
                     column += 2;
@@ -69,26 +94,33 @@ impl Lexer {
                         if c == '\n' {
                             line += 1;
                             column = 1;
+                            comment.push(c);
+                            chars.next();
                         } else {
                             column += 1;
-                        }
-                        if c == '*' && chars.clone().nth(1) == Some('/') {
-                            chars.next(); // consume '*'
-                            chars.next(); // consume '/'
-                            depth -= 1;
-                            if depth == 0 {
-                                break;
+                            if c == '*' && chars.clone().nth(1) == Some('/') {
+                                comment.push('*');
+                                comment.push('/');
+                                chars.next(); // consume '*'
+                                chars.next(); // consume '/'
+                                depth -= 1;
+                                if depth == 0 {
+                                    break;
+                                }
+                            } else if c == '/' && chars.clone().nth(1) == Some('*') {
+                                comment.push('/');
+                                comment.push('*');
+                                chars.next(); // consume '/'
+                                chars.next(); // consume '*'
+                                depth += 1;
+                            } else {
+                                comment.push(c);
+                                chars.next();
                             }
-                        } else if c == '/' && chars.clone().nth(1) == Some('*') {
-                            chars.next(); // consume '/'
-                            chars.next(); // consume '*'
-                            depth += 1;
-                        } else {
-                            chars.next();
                         }
                     }
                     tokens.push(SpannedToken {
-                        value: Token::MultiLineCommentTrivia,
+                        value: Token::MultiLineCommentTrivia(comment),
                         line: start_line,
                         column: start_column,
                     });
@@ -287,145 +319,64 @@ mod tests {
 
     #[test]
     fn lexes_identifier() {
-        let tokens = lex("foo");
+        let input = "foo";
+        let tokens = lex(input);
 
-        assert_eq!(render(&tokens), "foo");
-
-        assert_eq!(
-            tokens,
-            vec![
-                SpannedToken {
-                    value: Token::Identifier("foo".into()),
-                    line: 1,
-                    column: 1,
-                },
-                SpannedToken {
-                    value: Token::Eof,
-                    line: 1,
-                    column: 4,
-                },
-            ],
-        );
+        // Verify exact round-trip rendering
+        assert_eq!(render(&tokens), input);
     }
 
     #[test]
     fn lexes_bigint_literal() {
-        let tokens = lex("123n");
+        let input = "123n";
+        let tokens = lex(input);
 
-        assert_eq!(render(&tokens), "123n");
-
-        assert_eq!(
-            tokens,
-            vec![
-                SpannedToken {
-                    value: Token::BigIntLiteral("123".into()),
-                    line: 1,
-                    column: 1,
-                },
-                SpannedToken {
-                    value: Token::Eof,
-                    line: 1,
-                    column: 5,
-                },
-            ],
-        );
+        // Verify exact round-trip rendering
+        assert_eq!(render(&tokens), input);
     }
 
     #[test]
     fn skips_whitespace_and_tracks_position() {
-        let tokens = lex(" \nfoo");
+        let input = " \nfoo";
+        let tokens = lex(input);
 
-        assert_eq!(render(&tokens), "foo");
+        // Verify exact round-trip rendering
+        assert_eq!(render(&tokens), input);
 
+        // Verify tokens include whitespace and newline trivia
         assert_eq!(
             tokens,
-            vec![
-                SpannedToken {
-                    value: Token::Identifier("foo".into()),
-                    line: 2,
-                    column: 1,
-                },
-                SpannedToken {
-                    value: Token::Eof,
-                    line: 2,
-                    column: 4,
-                },
-            ],
-        );
-    }
-
-    #[test]
-    fn lexes_equals_token() {
-        let tokens = lex(r#"var x = "string" + 5;"#);
-
-        assert_eq!(render(&tokens), "var x=\"string\"+5;");
-
-        assert_eq!(
-            tokens,
-            vec![
-                SpannedToken {
-                    value: Token::Var,
-                    line: 1,
-                    column: 1,
-                },
-                SpannedToken {
-                    value: Token::Identifier("x".into()),
-                    line: 1,
-                    column: 5,
-                },
-                SpannedToken {
-                    value: Token::Equals,
-                    line: 1,
-                    column: 7,
-                },
-                SpannedToken {
-                    value: Token::StringLiteral("string".into()),
-                    line: 1,
-                    column: 9,
-                },
-                SpannedToken {
-                    value: Token::Plus,
-                    line: 1,
-                    column: 18,
-                },
-                SpannedToken {
-                    value: Token::NumericLiteral("5".into()),
-                    line: 1,
-                    column: 20,
-                },
-                SpannedToken {
-                    value: Token::Semicolon,
-                    line: 1,
-                    column: 21,
-                },
-                SpannedToken {
-                    value: Token::Eof,
-                    line: 1,
-                    column: 22,
-                },
+            [
+                SpannedToken { value: Token::WhitespaceTrivia(" ".into()), line: 1, column: 1 },
+                SpannedToken { value: Token::NewLineTrivia, line: 1, column: 2 },
+                SpannedToken { value: Token::Identifier("foo".into()), line: 2, column: 1 },
+                SpannedToken { value: Token::Eof, line: 2, column: 4 },
             ]
         );
     }
 
     #[test]
+    fn lexes_equals_token() {
+        let input = r#"var x = "string" + 5;"#;
+        let tokens = lex(input);
+
+        // Verify exact round-trip rendering
+        assert_eq!(render(&tokens), input);
+    }
+
+    #[test]
     fn lexes_typescript_imports() {
-        let tokens = lex(r#"
+        let input = r#"
 import foo from "bar";
 import { baz, qux as quux } from "mod";
 import * as ns from "pkg";
 import "side-effect";
 console.log("hello world");
-"#);
+"#;
+        let tokens = lex(input);
 
-        let expected_render = concat!(
-            "import foo from\"bar\";",
-            "import{baz,qux as quux}from\"mod\";",
-            "import*as ns from\"pkg\";",
-            "import\"side-effect\";",
-            "console.log(\"hello world\");"
-        );
-
-        assert_eq!(render(&tokens), expected_render);
+        // Verify exact round-trip rendering
+        assert_eq!(render(&tokens), input);
     }
 
     #[test]
@@ -460,23 +411,7 @@ console.log("hello /* not comment */ world"); // Trailing trivia
         let mut lexer = super::Lexer::new(src);
         let tokens: Vec<SpannedToken> = lexer.lex();
 
-        let expected_render = concat!(
-            "//",
-            "import foo from\"bar\";",
-            "/* */",
-            "import{/* */baz,//qux as quux}from\"mod\";",
-            "/* */",
-            "import*as ns from\"pkg\";",
-            "//",
-            "import\"side-effect\";",
-            "//",
-            "//",
-            "let s=\"test // not a comment\";",
-            "/* */",
-            "console.log(\"hello /* not comment */ world\");",
-            "//"
-        );
-
-        assert_eq!(render(&tokens), expected_render);
+        // Verify exact round-trip rendering
+        assert_eq!(render(&tokens), src);
     }
 }

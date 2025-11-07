@@ -9,10 +9,10 @@ pub enum Token {
     Eof,
 
     // ===== Trivia (scanner can emit/observe; typically skipped by parser) =====
-    SingleLineCommentTrivia,
-    MultiLineCommentTrivia,
+    SingleLineCommentTrivia(String), // Full comment including "//" marker
+    MultiLineCommentTrivia(String), // Full comment including "/* */" markers
     NewLineTrivia,
-    WhitespaceTrivia,
+    WhitespaceTrivia(String), // Actual whitespace characters (spaces, tabs)
     ShebangTrivia,
     ConflictMarkerTrivia,
 
@@ -368,10 +368,10 @@ fn token_fragment(token: &Token) -> Option<Cow<'static, str>> {
     let fragment = match token {
         Token::Illegal => Cow::Borrowed("/*illegal*/"),
         Token::Eof => return None,
-        Token::SingleLineCommentTrivia => Cow::Borrowed("//"),
-        Token::MultiLineCommentTrivia => Cow::Borrowed("/* */"),
+        Token::SingleLineCommentTrivia(text) => Cow::Owned(text.clone()),
+        Token::MultiLineCommentTrivia(text) => Cow::Owned(text.clone()),
         Token::NewLineTrivia => Cow::Borrowed("\n"),
-        Token::WhitespaceTrivia => Cow::Borrowed(" "),
+        Token::WhitespaceTrivia(text) => Cow::Owned(text.clone()),
         Token::ShebangTrivia => Cow::Borrowed("#!"),
         Token::ConflictMarkerTrivia => Cow::Borrowed("<<<<<<<"),
         Token::Identifier(name) => Cow::Owned(name.clone()),
@@ -567,8 +567,8 @@ fn needs_separator(prev_fragment: &str, next_fragment: &str) -> bool {
 
 /// Render a sequence of tokens back into a source string suitable for tests.
 ///
-/// This is a best-effort reconstruction. Trivia tokens that do not retain their
-/// original text (e.g. comments) are emitted in a minimal canonical form.
+/// This function reconstructs the original source code exactly, preserving
+/// all whitespace, newlines, and comment content as stored in the tokens.
 pub fn tokens_to_source<'a, I>(tokens: I) -> String
 where
     I: IntoIterator<Item = &'a SpannedToken>,
@@ -625,7 +625,7 @@ mod tests {
                 column: 1,
             },
             SpannedToken {
-                value: Token::WhitespaceTrivia,
+                value: Token::WhitespaceTrivia(" ".into()),
                 line: 1,
                 column: 4,
             },
