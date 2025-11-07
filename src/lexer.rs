@@ -342,5 +342,226 @@ mod tests {
             ],
         );
     }
+
+    #[test]
+    fn lexes_assign_token() {
+        let tokens = lex(r#"var x = "string" + 5;"#);
+
+        assert_eq!(
+            tokens,
+            vec![
+                SpannedToken {
+                    value: Token::Var,
+                    line: 1,
+                    column: 1,
+                },
+                SpannedToken {
+                    value: Token::Identifier("x".into()),
+                    line: 1,
+                    column: 5,
+                },
+                SpannedToken {
+                    value: Token::Assign,
+                    line: 1,
+                    column: 7,
+                },
+                SpannedToken {
+                    value: Token::StringLiteral("string".into()),
+                    line: 1,
+                    column: 9,
+                },
+                SpannedToken {
+                    value: Token::Plus,
+                    line: 1,
+                    column: 18,
+                },
+                SpannedToken {
+                    value: Token::NumericLiteral("5".into()),
+                    line: 1,
+                    column: 20,
+                },
+                SpannedToken {
+                    value: Token::Semicolon,
+                    line: 1,
+                    column: 21,
+                },
+                SpannedToken {
+                    value: Token::Eof,
+                    line: 1,
+                    column: 22,
+                },
+            ]
+        );
+    }
+
+    
+    #[test]
+    fn lexes_typescript_imports() {
+        let tokens = lex(
+            r#"
+import foo from "bar";
+import { baz, qux as quux } from "mod";
+import * as ns from "pkg";
+import "side-effect";
+console.log("hello world");
+"#
+        );
+
+        use Token::*;
+
+        // Filter out comment trivia tokens
+        let tokens: Vec<_> = tokens
+            .into_iter()
+            .collect();
+
+        // Instead of comparing line/column numbers rigidly, just assert the token sequence and value
+        let expected = vec![
+            Import,
+            Identifier("foo".into()),
+            From,
+            StringLiteral("bar".into()),
+            Semicolon,
+
+            Import,
+            OpenBrace,
+            Identifier("baz".into()),
+            Comma,
+            Identifier("qux".into()),
+            As,
+            Identifier("quux".into()),
+            CloseBrace,
+            From,
+            StringLiteral("mod".into()),
+            Semicolon,
+
+            Import,
+            Asterisk,
+            As,
+            Identifier("ns".into()),
+            From,
+            StringLiteral("pkg".into()),
+            Semicolon,
+
+            Import,
+            StringLiteral("side-effect".into()),
+            Semicolon,
+
+            Identifier("console".into()),
+            Dot,
+            Identifier("log".into()),
+            OpenParen,
+            StringLiteral("hello world".into()),
+            CloseParen,
+            Semicolon,
+
+            Eof,
+        ];
+
+        let actual_tokens: Vec<_> = tokens.iter().map(|t| t.value.clone()).collect();
+
+        assert_eq!(actual_tokens, expected);
+    }
+
+    #[test]
+    fn test_typescript_with_trivias() {
+        use crate::token::Token::*;
+        use crate::token::SpannedToken;
+
+        let src = r#"
+// This is a single-line comment
+import foo from "bar"; /* Block comment before import */
+
+import {
+    /* multi-line 
+       trivia */ baz, 
+    // oneline
+    qux as quux
+} from "mod";
+
+/*
+    Another block comment 
+*/
+import * as ns from "pkg";
+// Simple import
+import "side-effect";
+// After import
+
+// String literal with // inside
+let s = "test // not a comment";
+/* String with /* nested */ content */
+
+console.log("hello /* not comment */ world"); // Trailing trivia
+"#;
+
+        // new Lexer, lex
+        let mut lexer = super::Lexer::new(src);
+        let tokens: Vec<SpannedToken> = lexer.lex();
+
+        // This test only checks the sequence of token kinds, not trivia values/text
+        let expected = vec![
+            SingleLineCommentTrivia,
+            Import,
+            Identifier("foo".into()),
+            From,
+            StringLiteral("bar".into()),
+            Semicolon,
+            MultiLineCommentTrivia,
+
+            Import,
+            OpenBrace,
+            MultiLineCommentTrivia,
+            Identifier("baz".into()),
+            Comma,
+            SingleLineCommentTrivia,
+            Identifier("qux".into()),
+            As,
+            Identifier("quux".into()),
+            CloseBrace,
+            From,
+            StringLiteral("mod".into()),
+            Semicolon,
+
+            MultiLineCommentTrivia,
+            Import,
+            Asterisk,
+            As,
+            Identifier("ns".into()),
+            From,
+            StringLiteral("pkg".into()),
+            Semicolon,
+            SingleLineCommentTrivia,
+
+            Import,
+            StringLiteral("side-effect".into()),
+            Semicolon,
+            SingleLineCommentTrivia,
+
+            SingleLineCommentTrivia,
+
+            Let,
+            Identifier("s".into()),
+            Assign,
+            StringLiteral("test // not a comment".into()),
+            Semicolon,
+            MultiLineCommentTrivia,
+
+            Identifier("console".into()),
+            Dot,
+            Identifier("log".into()),
+            OpenParen,
+            StringLiteral("hello /* not comment */ world".into()),
+            CloseParen,
+            Semicolon,
+            SingleLineCommentTrivia,
+
+            Eof,
+        ];
+
+        let actual_tokens: Vec<_> = tokens.iter().map(|t| t.value.clone()).collect();
+
+        assert_eq!(actual_tokens, expected);
+    }
+
+
 }
 

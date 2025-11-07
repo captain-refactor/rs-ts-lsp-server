@@ -213,7 +213,7 @@ pub fn find_match(s: &str) -> Option<Token> {
         "--" => Some(Token::MinusMinus),
 
         // Assignment operators
-        "=" => Some(Token::Equals),
+        "=" => Some(Token::Assign),
         "+=" => Some(Token::PlusEquals),
         "-=" => Some(Token::MinusEquals),
         "*=" => Some(Token::AsteriskEquals),
