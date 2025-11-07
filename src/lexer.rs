@@ -275,6 +275,11 @@ impl Lexer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::token::{Token, tokens_to_source};
+
+    fn render(tokens: &[SpannedToken]) -> String {
+        tokens_to_source(tokens.iter())
+    }
 
     fn lex(input: &str) -> Vec<SpannedToken> {
         Lexer::new(input).lex()
@@ -283,6 +288,8 @@ mod tests {
     #[test]
     fn lexes_identifier() {
         let tokens = lex("foo");
+
+        assert_eq!(render(&tokens), "foo");
 
         assert_eq!(
             tokens,
@@ -305,6 +312,8 @@ mod tests {
     fn lexes_bigint_literal() {
         let tokens = lex("123n");
 
+        assert_eq!(render(&tokens), "123n");
+
         assert_eq!(
             tokens,
             vec![
@@ -326,6 +335,8 @@ mod tests {
     fn skips_whitespace_and_tracks_position() {
         let tokens = lex(" \nfoo");
 
+        assert_eq!(render(&tokens), "foo");
+
         assert_eq!(
             tokens,
             vec![
@@ -346,6 +357,8 @@ mod tests {
     #[test]
     fn lexes_equals_token() {
         let tokens = lex(r#"var x = "string" + 5;"#);
+
+        assert_eq!(render(&tokens), "var x=\"string\"+5;");
 
         assert_eq!(
             tokens,
@@ -404,59 +417,19 @@ import "side-effect";
 console.log("hello world");
 "#);
 
-        use Token::*;
+        let expected_render = concat!(
+            "import foo from\"bar\";",
+            "import{baz,qux as quux}from\"mod\";",
+            "import*as ns from\"pkg\";",
+            "import\"side-effect\";",
+            "console.log(\"hello world\");"
+        );
 
-        // Filter out comment trivia tokens
-        let tokens: Vec<_> = tokens.into_iter().collect();
-
-        // Instead of comparing line/column numbers rigidly, just assert the token sequence and value
-        let expected = vec![
-            Import,
-            Identifier("foo".into()),
-            From,
-            StringLiteral("bar".into()),
-            Semicolon,
-            Import,
-            OpenBrace,
-            Identifier("baz".into()),
-            Comma,
-            Identifier("qux".into()),
-            As,
-            Identifier("quux".into()),
-            CloseBrace,
-            From,
-            StringLiteral("mod".into()),
-            Semicolon,
-            Import,
-            Asterisk,
-            As,
-            Identifier("ns".into()),
-            From,
-            StringLiteral("pkg".into()),
-            Semicolon,
-            Import,
-            StringLiteral("side-effect".into()),
-            Semicolon,
-            Identifier("console".into()),
-            Dot,
-            Identifier("log".into()),
-            OpenParen,
-            StringLiteral("hello world".into()),
-            CloseParen,
-            Semicolon,
-            Eof,
-        ];
-
-        let actual_tokens: Vec<_> = tokens.iter().map(|t| t.value.clone()).collect();
-
-        assert_eq!(actual_tokens, expected);
+        assert_eq!(render(&tokens), expected_render);
     }
 
     #[test]
     fn test_typescript_with_trivias() {
-        use crate::token::SpannedToken;
-        use crate::token::Token::*;
-
         let src = r#"
 // This is a single-line comment
 import foo from "bar"; /* Block comment before import */
@@ -487,61 +460,23 @@ console.log("hello /* not comment */ world"); // Trailing trivia
         let mut lexer = super::Lexer::new(src);
         let tokens: Vec<SpannedToken> = lexer.lex();
 
-        // This test only checks the sequence of token kinds, not trivia values/text
-        let expected = vec![
-            SingleLineCommentTrivia,
-            Import,
-            Identifier("foo".into()),
-            From,
-            StringLiteral("bar".into()),
-            Semicolon,
-            MultiLineCommentTrivia,
-            Import,
-            OpenBrace,
-            MultiLineCommentTrivia,
-            Identifier("baz".into()),
-            Comma,
-            SingleLineCommentTrivia,
-            Identifier("qux".into()),
-            As,
-            Identifier("quux".into()),
-            CloseBrace,
-            From,
-            StringLiteral("mod".into()),
-            Semicolon,
-            MultiLineCommentTrivia,
-            Import,
-            Asterisk,
-            As,
-            Identifier("ns".into()),
-            From,
-            StringLiteral("pkg".into()),
-            Semicolon,
-            SingleLineCommentTrivia,
-            Import,
-            StringLiteral("side-effect".into()),
-            Semicolon,
-            SingleLineCommentTrivia,
-            SingleLineCommentTrivia,
-            Let,
-            Identifier("s".into()),
-            Equals,
-            StringLiteral("test // not a comment".into()),
-            Semicolon,
-            MultiLineCommentTrivia,
-            Identifier("console".into()),
-            Dot,
-            Identifier("log".into()),
-            OpenParen,
-            StringLiteral("hello /* not comment */ world".into()),
-            CloseParen,
-            Semicolon,
-            SingleLineCommentTrivia,
-            Eof,
-        ];
+        let expected_render = concat!(
+            "//",
+            "import foo from\"bar\";",
+            "/* */",
+            "import{/* */baz,//qux as quux}from\"mod\";",
+            "/* */",
+            "import*as ns from\"pkg\";",
+            "//",
+            "import\"side-effect\";",
+            "//",
+            "//",
+            "let s=\"test // not a comment\";",
+            "/* */",
+            "console.log(\"hello /* not comment */ world\");",
+            "//"
+        );
 
-        let actual_tokens: Vec<_> = tokens.iter().map(|t| t.value.clone()).collect();
-
-        assert_eq!(actual_tokens, expected);
+        assert_eq!(render(&tokens), expected_render);
     }
 }
