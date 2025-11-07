@@ -89,8 +89,7 @@ pub enum Token {
     Hash,            // # (used e.g. in private names in certain contexts)
 
     // Assignment
-    Assign,               // =
-    Equals,                     // ==
+    Equals,                     // =
     PlusEquals,                  // +=
     MinusEquals,                 // -=
     AsteriskEquals,              // *=
@@ -213,7 +212,7 @@ pub fn find_match(s: &str) -> Option<Token> {
         "--" => Some(Token::MinusMinus),
 
         // Assignment operators
-        "=" => Some(Token::Assign),
+        "=" => Some(Token::Equals),
         "+=" => Some(Token::PlusEquals),
         "-=" => Some(Token::MinusEquals),
         "*=" => Some(Token::AsteriskEquals),

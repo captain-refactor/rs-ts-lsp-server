@@ -344,7 +344,7 @@ mod tests {
     }
 
     #[test]
-    fn lexes_assign_token() {
+    fn lexes_equals_token() {
         let tokens = lex(r#"var x = "string" + 5;"#);
 
         assert_eq!(
@@ -361,7 +361,7 @@ mod tests {
                     column: 5,
                 },
                 SpannedToken {
-                    value: Token::Assign,
+                    value: Token::Equals,
                     line: 1,
                     column: 7,
                 },
@@ -540,7 +540,7 @@ console.log("hello /* not comment */ world"); // Trailing trivia
 
             Let,
             Identifier("s".into()),
-            Assign,
+            Equals,
             StringLiteral("test // not a comment".into()),
             Semicolon,
             MultiLineCommentTrivia,
