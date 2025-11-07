@@ -10,7 +10,7 @@ pub enum Token {
 
     // ===== Trivia (scanner can emit/observe; typically skipped by parser) =====
     SingleLineCommentTrivia(String), // Full comment including "//" marker
-    MultiLineCommentTrivia(String), // Full comment including "/* */" markers
+    MultiLineCommentTrivia(String),  // Full comment including "/* */" markers
     NewLineTrivia,
     WhitespaceTrivia(String), // Actual whitespace characters (spaces, tabs)
     ShebangTrivia,

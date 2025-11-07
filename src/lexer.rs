@@ -347,10 +347,26 @@ mod tests {
         assert_eq!(
             tokens,
             [
-                SpannedToken { value: Token::WhitespaceTrivia(" ".into()), line: 1, column: 1 },
-                SpannedToken { value: Token::NewLineTrivia, line: 1, column: 2 },
-                SpannedToken { value: Token::Identifier("foo".into()), line: 2, column: 1 },
-                SpannedToken { value: Token::Eof, line: 2, column: 4 },
+                SpannedToken {
+                    value: Token::WhitespaceTrivia(" ".into()),
+                    line: 1,
+                    column: 1
+                },
+                SpannedToken {
+                    value: Token::NewLineTrivia,
+                    line: 1,
+                    column: 2
+                },
+                SpannedToken {
+                    value: Token::Identifier("foo".into()),
+                    line: 2,
+                    column: 1
+                },
+                SpannedToken {
+                    value: Token::Eof,
+                    line: 2,
+                    column: 4
+                },
             ]
         );
     }

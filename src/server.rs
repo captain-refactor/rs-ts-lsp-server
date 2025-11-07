@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use log::{error, info, warn};
+use log::{info, warn};
 use tokio::sync::Mutex;
 use tower_lsp::jsonrpc::Result as JsonResult;
 use tower_lsp::lsp_types::{
@@ -33,13 +33,9 @@ impl Backend {
 
     async fn log(&self, message: &str) {
         info!("{}", message);
-        if let Err(error) = self
-            .client
+        self.client
             .log_message(MessageType::INFO, message.to_string())
-            .await
-        {
-            error!("Failed to send client log message: {error}");
-        }
+            .await;
     }
 }
 
@@ -158,6 +154,7 @@ impl Server {
         let stdout = tokio::io::stdout();
 
         info!("Starting LSP server");
-        LspServer::new(stdin, stdout, socket).serve(service).await
+        LspServer::new(stdin, stdout, socket).serve(service).await;
+        Ok(())
     }
 }
