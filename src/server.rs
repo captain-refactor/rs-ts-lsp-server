@@ -21,6 +21,22 @@ struct ServerState {
     documents: HashMap<String, String>,
 }
 
+trait ServeOutcome {
+    fn into_json_result(self) -> JsonResult<()>;
+}
+
+impl ServeOutcome for () {
+    fn into_json_result(self) -> JsonResult<()> {
+        Ok(())
+    }
+}
+
+impl ServeOutcome for JsonResult<()> {
+    fn into_json_result(self) -> JsonResult<()> {
+        self
+    }
+}
+
 pub struct Backend {
     client: Client,
     state: SharedState,
@@ -154,7 +170,9 @@ impl Server {
         let stdout = tokio::io::stdout();
 
         info!("Starting LSP server");
-        LspServer::new(stdin, stdout, socket).serve(service).await;
-        Ok(())
+        LspServer::new(stdin, stdout, socket)
+            .serve(service)
+            .await
+            .into_json_result()
     }
 }
