@@ -244,10 +244,10 @@ impl Lexer {
 
             // Handle operators and punctuation (try longest match first)
             let mut matched = false;
-            // Build up potential operator strings (up to 3 chars)
+            // Build up potential operator strings (up to 4 chars)
             let mut op_chars = Vec::new();
             let mut peek_iter = chars.clone();
-            for _ in 0..3 {
+            for _ in 0..4 {
                 if let Some(&c) = peek_iter.peek() {
                     op_chars.push(c);
                     peek_iter.next();
