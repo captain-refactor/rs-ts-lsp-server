@@ -381,6 +381,22 @@ mod tests {
     }
 
     #[test]
+    fn lexes_shift_assignment_operator() {
+        let input = "a >>>= 1;";
+        let tokens = lex(input);
+
+        // Verify exact round-trip rendering
+        assert_eq!(render(&tokens), input);
+
+        assert!(matches!(tokens[0].value, Token::Identifier(ref name) if name == "a"));
+        assert!(matches!(tokens[1].value, Token::WhitespaceTrivia(ref ws) if ws == " "));
+        assert!(matches!(tokens[2].value, Token::GreaterThanGreaterThanGreaterThanEquals));
+        assert!(matches!(tokens[3].value, Token::WhitespaceTrivia(ref ws) if ws == " "));
+        assert!(matches!(tokens[4].value, Token::NumericLiteral(ref num) if num == "1"));
+        assert!(matches!(tokens[5].value, Token::Semicolon));
+    }
+
+    #[test]
     fn lexes_typescript_imports() {
         let input = r#"
 import foo from "bar";
