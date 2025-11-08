@@ -430,4 +430,36 @@ console.log("hello /* not comment */ world"); // Trailing trivia
         // Verify exact round-trip rendering
         assert_eq!(render(&tokens), src);
     }
+
+    #[test]
+    fn lexes_boolean_null_and_undefined_keywords() {
+        let input = "true false null undefined";
+        let tokens = lex(input);
+
+        assert_eq!(render(&tokens), input);
+
+        assert!(matches!(tokens[0].value, Token::True));
+        assert!(matches!(tokens[1].value, Token::WhitespaceTrivia(_)));
+        assert!(matches!(tokens[2].value, Token::False));
+        assert!(matches!(tokens[3].value, Token::WhitespaceTrivia(_)));
+        assert!(matches!(tokens[4].value, Token::Null));
+        assert!(matches!(tokens[5].value, Token::WhitespaceTrivia(_)));
+        assert!(matches!(tokens[6].value, Token::Undefined));
+    }
+
+    #[test]
+    fn lexes_basic_jsx_tags() {
+        let input = "<div>true</div>";
+        let tokens = lex(input);
+
+        assert_eq!(render(&tokens), input);
+
+        assert!(matches!(tokens[0].value, Token::LessThan));
+        assert!(matches!(tokens[1].value, Token::Identifier(ref name) if name == "div"));
+        assert!(matches!(tokens[2].value, Token::GreaterThan));
+        assert!(matches!(tokens[3].value, Token::True));
+        assert!(matches!(tokens[4].value, Token::LessThanSlash));
+        assert!(matches!(tokens[5].value, Token::Identifier(ref name) if name == "div"));
+        assert!(matches!(tokens[6].value, Token::GreaterThan));
+    }
 }
