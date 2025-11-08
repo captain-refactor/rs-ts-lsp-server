@@ -244,10 +244,10 @@ impl Lexer {
 
             // Handle operators and punctuation (try longest match first)
             let mut matched = false;
-            // Build up potential operator strings (up to 3 chars)
+            // Build up potential operator strings (up to 4 chars)
             let mut op_chars = Vec::new();
             let mut peek_iter = chars.clone();
-            for _ in 0..3 {
+            for _ in 0..4 {
                 if let Some(&c) = peek_iter.peek() {
                     op_chars.push(c);
                     peek_iter.next();
@@ -381,6 +381,22 @@ mod tests {
     }
 
     #[test]
+    fn lexes_shift_assignment_operator() {
+        let input = "a >>>= 1;";
+        let tokens = lex(input);
+
+        // Verify exact round-trip rendering
+        assert_eq!(render(&tokens), input);
+
+        assert!(matches!(tokens[0].value, Token::Identifier(ref name) if name == "a"));
+        assert!(matches!(tokens[1].value, Token::WhitespaceTrivia(ref ws) if ws == " "));
+        assert!(matches!(tokens[2].value, Token::GreaterThanGreaterThanGreaterThanEquals));
+        assert!(matches!(tokens[3].value, Token::WhitespaceTrivia(ref ws) if ws == " "));
+        assert!(matches!(tokens[4].value, Token::NumericLiteral(ref num) if num == "1"));
+        assert!(matches!(tokens[5].value, Token::Semicolon));
+    }
+
+    #[test]
     fn lexes_typescript_imports() {
         let input = r#"
 import foo from "bar";
@@ -429,5 +445,37 @@ console.log("hello /* not comment */ world"); // Trailing trivia
 
         // Verify exact round-trip rendering
         assert_eq!(render(&tokens), src);
+    }
+
+    #[test]
+    fn lexes_boolean_null_and_undefined_keywords() {
+        let input = "true false null undefined";
+        let tokens = lex(input);
+
+        assert_eq!(render(&tokens), input);
+
+        assert!(matches!(tokens[0].value, Token::True));
+        assert!(matches!(tokens[1].value, Token::WhitespaceTrivia(_)));
+        assert!(matches!(tokens[2].value, Token::False));
+        assert!(matches!(tokens[3].value, Token::WhitespaceTrivia(_)));
+        assert!(matches!(tokens[4].value, Token::Null));
+        assert!(matches!(tokens[5].value, Token::WhitespaceTrivia(_)));
+        assert!(matches!(tokens[6].value, Token::Undefined));
+    }
+
+    #[test]
+    fn lexes_basic_jsx_tags() {
+        let input = "<div>true</div>";
+        let tokens = lex(input);
+
+        assert_eq!(render(&tokens), input);
+
+        assert!(matches!(tokens[0].value, Token::LessThan));
+        assert!(matches!(tokens[1].value, Token::Identifier(ref name) if name == "div"));
+        assert!(matches!(tokens[2].value, Token::GreaterThan));
+        assert!(matches!(tokens[3].value, Token::True));
+        assert!(matches!(tokens[4].value, Token::LessThanSlash));
+        assert!(matches!(tokens[5].value, Token::Identifier(ref name) if name == "div"));
+        assert!(matches!(tokens[6].value, Token::GreaterThan));
     }
 }
